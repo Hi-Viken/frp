@@ -1,109 +1,165 @@
 <template>
   <div id="app">
-    <header class="header">
-      <div class="header-content">
-        <div class="brand-section">
-          <button
-            v-if="isMobile"
-            class="hamburger-btn"
-            @click="toggleSidebar"
-            aria-label="Toggle menu"
-          >
-            <span class="hamburger-icon">&#9776;</span>
-          </button>
-          <div class="logo-wrapper">
-            <LogoIcon class="logo-icon" />
+    <template v-if="!isLoginPage">
+      <header class="header">
+        <div class="header-content">
+          <div class="brand-section">
+            <button
+              v-if="isMobile"
+              class="hamburger-btn"
+              @click="toggleSidebar"
+              :aria-label="$t('nav.toggleMenu')"
+            >
+              <span class="hamburger-icon">&#9776;</span>
+            </button>
+            <div class="logo-wrapper">
+              <LogoIcon class="logo-icon" />
+            </div>
+            <span class="divider">/</span>
+            <span class="brand-name">frp</span>
+            <span class="badge server-badge">{{ $t('nav.server') }}</span>
           </div>
-          <span class="divider">/</span>
-          <span class="brand-name">frp</span>
-          <span class="badge server-badge">Server</span>
-        </div>
 
-        <div class="header-controls">
-          <a
-            class="github-link"
-            href="https://github.com/fatedier/frp"
-            target="_blank"
-            aria-label="GitHub"
-          >
-            <GitHubIcon class="github-icon" />
-          </a>
-          <el-switch
-            v-model="isDark"
-            inline-prompt
-            :active-icon="Moon"
-            :inactive-icon="Sunny"
-            class="theme-switch"
-          />
+          <div class="header-controls">
+            <el-dropdown trigger="click" @command="handleLocaleChange" class="lang-dropdown">
+              <span class="lang-trigger">
+                {{ currentLocaleLabel }}
+                <el-icon class="lang-arrow"><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="l in supportedLocales"
+                    :key="l.value"
+                    :command="l.value"
+                    :class="{ 'is-active': locale === l.value }"
+                  >
+                    {{ l.label }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button
+              v-if="authRequired && isLoggedIn"
+              text
+              size="small"
+              @click="handleLogout"
+              :loading="loggingOut"
+            >
+              {{ $t('nav.logout') }}
+            </el-button>
+            <a
+              class="github-link"
+              href="https://github.com/fatedier/frp"
+              target="_blank"
+              aria-label="GitHub"
+            >
+              <GitHubIcon class="github-icon" />
+            </a>
+            <el-switch
+              v-model="isDark"
+              inline-prompt
+              :active-icon="Moon"
+              :inactive-icon="Sunny"
+              class="theme-switch"
+            />
+          </div>
         </div>
+      </header>
+
+      <div class="layout">
+        <!-- Mobile overlay -->
+        <div
+          v-if="isMobile && sidebarOpen"
+          class="sidebar-overlay"
+          @click="closeSidebar"
+        />
+
+        <aside
+          class="sidebar"
+          :class="{ 'mobile-open': isMobile && sidebarOpen }"
+        >
+          <nav class="sidebar-nav">
+            <router-link
+              to="/"
+              class="sidebar-link"
+              :class="{ active: route.path === '/' }"
+              @click="closeSidebar"
+            >
+              {{ $t('nav.overview') }}
+            </router-link>
+            <router-link
+              to="/clients"
+              class="sidebar-link"
+              :class="{ active: route.path.startsWith('/clients') }"
+              @click="closeSidebar"
+            >
+              {{ $t('nav.clients') }}
+            </router-link>
+            <router-link
+              to="/proxies"
+              class="sidebar-link"
+              :class="{
+                active:
+                  route.path.startsWith('/proxies') ||
+                  route.path.startsWith('/proxy'),
+              }"
+              @click="closeSidebar"
+            >
+              {{ $t('nav.proxies') }}
+            </router-link>
+            <router-link
+              to="/config"
+              class="sidebar-link"
+              :class="{ active: route.path.startsWith('/config') }"
+              @click="closeSidebar"
+            >
+              {{ $t('nav.config') }}
+            </router-link>
+          </nav>
+        </aside>
+
+        <main id="content">
+          <router-view></router-view>
+        </main>
       </div>
-    </header>
-
-    <div class="layout">
-      <!-- Mobile overlay -->
-      <div
-        v-if="isMobile && sidebarOpen"
-        class="sidebar-overlay"
-        @click="closeSidebar"
-      />
-
-      <aside
-        class="sidebar"
-        :class="{ 'mobile-open': isMobile && sidebarOpen }"
-      >
-        <nav class="sidebar-nav">
-          <router-link
-            to="/"
-            class="sidebar-link"
-            :class="{ active: route.path === '/' }"
-            @click="closeSidebar"
-          >
-            Overview
-          </router-link>
-          <router-link
-            to="/clients"
-            class="sidebar-link"
-            :class="{ active: route.path.startsWith('/clients') }"
-            @click="closeSidebar"
-          >
-            Clients
-          </router-link>
-          <router-link
-            to="/proxies"
-            class="sidebar-link"
-            :class="{
-              active:
-                route.path.startsWith('/proxies') ||
-                route.path.startsWith('/proxy'),
-            }"
-            @click="closeSidebar"
-          >
-            Proxies
-          </router-link>
-        </nav>
-      </aside>
-
-      <main id="content">
-        <router-view></router-view>
-      </main>
-    </div>
+    </template>
+    <router-view v-else></router-view>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDark } from '@vueuse/core'
-import { Moon, Sunny } from '@element-plus/icons-vue'
+import { Moon, Sunny, ArrowDown } from '@element-plus/icons-vue'
 import GitHubIcon from './assets/icons/github.svg?component'
 import LogoIcon from './assets/icons/logo.svg?component'
 import { useResponsive } from './composables/useResponsive'
+import { useAuth } from './composables/useAuth'
+import { useLanguage } from './composables/useLanguage'
+import type { LocaleCode } from './i18n'
 
 const route = useRoute()
+const router = useRouter()
 const isDark = useDark()
 const { isMobile } = useResponsive()
+const { authRequired, isLoggedIn, logout } = useAuth()
+const { locale, setLocale, supportedLocales } = useLanguage()
 
 const sidebarOpen = ref(false)
+const loggingOut = ref(false)
+
+const isLoginPage = computed(() => route.name === 'Login')
+
+const currentLocaleLabel = computed(() => {
+  const found = supportedLocales.find((l) => l.value === locale.value)
+  return found ? found.label : locale.value
+})
+
+function handleLocaleChange(code: LocaleCode) {
+  setLocale(code)
+}
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
@@ -111,6 +167,16 @@ const toggleSidebar = () => {
 
 const closeSidebar = () => {
   sidebarOpen.value = false
+}
+
+async function handleLogout() {
+  loggingOut.value = true
+  try {
+    await logout()
+    router.push('/login')
+  } finally {
+    loggingOut.value = false
+  }
 }
 
 // Auto-close sidebar on route change
@@ -487,6 +553,39 @@ html.dark .el-switch {
 ::-webkit-scrollbar-thumb {
   background: #d1d1d1;
   border-radius: 3px;
+}
+
+/* Language selector */
+.lang-dropdown {
+  line-height: 1;
+}
+
+.lang-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.lang-trigger:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.lang-arrow {
+  font-size: 12px;
+}
+
+.lang-dropdown .el-dropdown-menu__item.is-active {
+  color: var(--el-color-primary);
+  font-weight: 600;
 }
 
 /* Mobile */

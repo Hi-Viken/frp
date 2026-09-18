@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/fatedier/golib/crypto"
@@ -51,11 +52,13 @@ import (
 	"github.com/fatedier/frp/pkg/util/version"
 	"github.com/fatedier/frp/pkg/util/vhost"
 	"github.com/fatedier/frp/pkg/util/xlog"
+	"github.com/fatedier/frp/server/configmanager"
 	"github.com/fatedier/frp/server/controller"
 	"github.com/fatedier/frp/server/group"
 	"github.com/fatedier/frp/server/ports"
 	"github.com/fatedier/frp/server/proxy"
 	"github.com/fatedier/frp/server/registry"
+	"github.com/fatedier/frp/server/session"
 	"github.com/fatedier/frp/server/visitor"
 )
 
@@ -94,6 +97,10 @@ type Service struct {
 	// Accept connections using websocket
 	websocketListener net.Listener
 
+	// HTTP/S vhost listeners (separate ports, owned by NewService)
+	vhostHTTPListener  net.Listener
+	vhostHTTPSListener net.Listener
+
 	// Accept frp tls connections
 	tlsListener net.Listener
 
@@ -121,6 +128,9 @@ type Service struct {
 	// web server for dashboard UI and apis
 	webServer *httppkg.Server
 
+	sessionMgr *session.Manager
+	configMgr  *configmanager.Manager
+
 	sshTunnelGateway *ssh.Gateway
 
 	// Auth runtime and encryption materials
@@ -134,9 +144,28 @@ type Service struct {
 	ctx context.Context
 	// call cancel to stop service
 	cancel context.CancelFunc
+
+	restartRequested atomic.Bool
 }
 
-func NewService(cfg *v1.ServerConfig) (*Service, error) {
+func (svr *Service) RequestRestart() {
+	svr.restartRequested.Store(true)
+	if svr.cancel != nil {
+		svr.cancel()
+	}
+	// Close the main listener to unblock the blocking accept loop in Run().
+	// Run() performs the full Close() itself to release all other resources,
+	// doing it here too would race with that cleanup path.
+	if svr.listener != nil {
+		svr.listener.Close()
+	}
+}
+
+func (svr *Service) IsRestartRequested() bool {
+	return svr.restartRequested.Load()
+}
+
+func NewService(cfg *v1.ServerConfig, configFilePath string) (*Service, error) {
 	tlsConfig, err := transport.NewServerTLSConfig(
 		cfg.Transport.TLS.CertFile,
 		cfg.Transport.TLS.KeyFile,
@@ -146,12 +175,16 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 	}
 
 	var webServer *httppkg.Server
+	var sessionMgr *session.Manager
 	if cfg.WebServer.Port > 0 {
 		ws, err := httppkg.NewServer(cfg.WebServer)
 		if err != nil {
 			return nil, err
 		}
 		webServer = ws
+
+		sessionMgr = session.NewManager(24 * time.Hour)
+		ws.SetSessionValidate(sessionMgr.ValidateFunc())
 
 		modelmetrics.EnableMem()
 		if cfg.EnablePrometheus {
@@ -162,6 +195,15 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 	authRuntime, err := auth.BuildServerAuth(&cfg.Auth)
 	if err != nil {
 		return nil, err
+	}
+
+	var configMgr *configmanager.Manager
+	if configFilePath != "" {
+		configMgr, err = configmanager.NewManager(configFilePath)
+		if err != nil {
+			log.Warnf("failed to init config manager: %v", err)
+			configMgr = nil
+		}
 	}
 
 	clientRegistry := registry.NewClientRegistry()
@@ -179,6 +221,8 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 		httpVhostRouter:   vhost.NewRouters(),
 		auth:              authRuntime,
 		webServer:         webServer,
+		sessionMgr:        sessionMgr,
+		configMgr:         configMgr,
 		tlsConfig:         tlsConfig,
 		cfg:               cfg,
 		ctx:               context.Background(),
@@ -319,6 +363,7 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 				return nil, fmt.Errorf("create vhost http listener error, %v", err)
 			}
 		}
+		svr.vhostHTTPListener = l
 		go func() {
 			_ = server.Serve(l)
 		}()
@@ -338,6 +383,7 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 			}
 			log.Infof("https service listen on %s", address)
 		}
+		svr.vhostHTTPSListener = l
 
 		svr.rc.VhostHTTPSMuxer, err = vhost.NewHTTPSMuxer(l, vhostReadWriteTimeout)
 		if err != nil {
@@ -425,8 +471,17 @@ func (svr *Service) Close() error {
 	if svr.listener != nil {
 		svr.listener.Close()
 	}
+	if svr.vhostHTTPListener != nil {
+		svr.vhostHTTPListener.Close()
+	}
+	if svr.vhostHTTPSListener != nil {
+		svr.vhostHTTPSListener.Close()
+	}
 	if svr.webServer != nil {
 		svr.webServer.Close()
+	}
+	if svr.sessionMgr != nil {
+		svr.sessionMgr.Stop()
 	}
 	if svr.sshTunnelGateway != nil {
 		svr.sshTunnelGateway.Close()

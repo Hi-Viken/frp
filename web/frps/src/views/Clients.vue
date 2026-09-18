@@ -3,8 +3,8 @@
     <div class="page-header">
       <div class="header-top">
         <div class="title-section">
-          <h1 class="page-title">Clients</h1>
-          <p class="page-subtitle">Manage connected clients and their status</p>
+          <h1 class="page-title">{{ $t('clients.title') }}</h1>
+          <p class="page-subtitle">{{ $t('clients.subtitle') }}</p>
         </div>
         <div class="status-tabs">
           <button
@@ -26,7 +26,7 @@
       <div class="search-section">
         <el-input
           v-model="searchText"
-          placeholder="Search clients..."
+          :placeholder="$t('clients.searchPlaceholder')"
           :prefix-icon="Search"
           clearable
           class="search-input"
@@ -43,7 +43,7 @@
         />
       </div>
       <div v-else-if="!loading" class="empty-state">
-        <el-empty description="No clients found" />
+        <el-empty :description="$t('clients.notFound')" />
       </div>
     </div>
 
@@ -63,11 +63,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElPagination } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { Client } from '../utils/client'
 import ClientCard from '../components/ClientCard.vue'
 import { getClientsV2 } from '../api/client'
+
+const { t } = useI18n()
 
 const clients = ref<Client[]>([])
 const loading = ref(false)
@@ -84,17 +87,17 @@ let requestSeq = 0
 const statusTabs = computed(() => [
   {
     value: 'all' as const,
-    label: 'All',
+    label: t('common.all'),
     count: statusFilter.value === 'all' ? total.value : null,
   },
   {
     value: 'online' as const,
-    label: 'Online',
+    label: t('common.online'),
     count: statusFilter.value === 'online' ? total.value : null,
   },
   {
     value: 'offline' as const,
-    label: 'Offline',
+    label: t('common.offline'),
     count: statusFilter.value === 'offline' ? total.value : null,
   },
 ])
@@ -126,7 +129,7 @@ const fetchData = async (silent = false) => {
     if (seq !== requestSeq) return
     ElMessage({
       showClose: true,
-      message: 'Failed to fetch clients: ' + error.message,
+      message: t('clients.fetchError') + error.message,
       type: 'error',
     })
   } finally {

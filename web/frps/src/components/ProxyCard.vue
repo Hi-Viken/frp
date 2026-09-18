@@ -11,15 +11,15 @@
 
         <div class="card-meta">
           <span v-if="proxy.port" class="meta-item">
-            <span class="meta-label">Port:</span>
+            <span class="meta-label">{{ $t('card.port') }}</span>
             <span class="meta-value">{{ proxy.port }}</span>
           </span>
           <span class="meta-item">
-            <span class="meta-label">Connections:</span>
+            <span class="meta-label">{{ $t('card.connections') }}</span>
             <span class="meta-value">{{ proxy.conns }}</span>
           </span>
           <span class="meta-item" v-if="proxy.clientID">
-            <span class="meta-label">Client:</span>
+            <span class="meta-label">{{ $t('card.client') }}</span>
             <span class="meta-value">{{
               proxy.user ? `${proxy.user}.${proxy.clientID}` : proxy.clientID
             }}</span>

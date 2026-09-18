@@ -21,11 +21,27 @@ import (
 
 	httppkg "github.com/fatedier/frp/pkg/util/http"
 	netpkg "github.com/fatedier/frp/pkg/util/net"
+	"github.com/fatedier/frp/server/configmanager"
 	adminapi "github.com/fatedier/frp/server/http"
 )
 
 func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) {
 	helper.Router.HandleFunc("/healthz", healthz)
+
+	apiController := adminapi.NewController(svr.cfg, svr.clientRegistry, svr.pxyManager, svr.sessionMgr)
+
+	helper.Router.HandleFunc("/api/login", httppkg.MakeHTTPHandlerFunc(apiController.Login)).Methods("POST")
+	helper.Router.HandleFunc("/api/logout", httppkg.MakeHTTPHandlerFunc(apiController.Logout)).Methods("POST")
+	helper.Router.HandleFunc("/api/login/status", httppkg.MakeHTTPHandlerFunc(apiController.LoginStatus)).Methods("GET")
+
+	helper.Router.Handle("/favicon.ico", http.FileServer(helper.AssetsFS)).Methods("GET")
+	helper.Router.PathPrefix("/static/").Handler(
+		netpkg.MakeHTTPGzipHandler(http.StripPrefix("/static/", http.FileServer(helper.AssetsFS))),
+	).Methods("GET")
+	helper.Router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/", http.StatusMovedPermanently)
+	})
+
 	subRouter := helper.Router.NewRoute().Subrouter()
 
 	subRouter.Use(helper.AuthMiddleware)
@@ -35,8 +51,6 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	if svr.cfg.EnablePrometheus {
 		subRouter.Handle("/metrics", promhttp.Handler())
 	}
-
-	apiController := adminapi.NewController(svr.cfg, svr.clientRegistry, svr.pxyManager)
 
 	// apis
 	subRouter.HandleFunc("/api/serverinfo", httppkg.MakeHTTPHandlerFunc(apiController.APIServerInfo)).Methods("GET")
@@ -59,15 +73,13 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	v2EncodedPathRouter.HandleFunc("/api/v2/proxies/{name}/traffic", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2ProxyTraffic)).Methods("GET")
 	v2EncodedPathRouter.HandleFunc("/api/v2/proxies/{name}", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2ProxyDetail)).Methods("GET")
 
-	// view
-	subRouter.Handle("/favicon.ico", http.FileServer(helper.AssetsFS)).Methods("GET")
-	subRouter.PathPrefix("/static/").Handler(
-		netpkg.MakeHTTPGzipHandler(http.StripPrefix("/static/", http.FileServer(helper.AssetsFS))),
-	).Methods("GET")
-
-	subRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/", http.StatusMovedPermanently)
-	})
+	if svr.configMgr != nil {
+		cfgController := configmanager.NewController(svr.configMgr, svr.RequestRestart)
+		subRouter.HandleFunc("/api/config", configmanager.MakeHandler(cfgController.GetConfig)).Methods("GET")
+		subRouter.HandleFunc("/api/config", configmanager.MakeHandler(cfgController.UpdateConfig)).Methods("POST")
+		subRouter.HandleFunc("/api/config/reload", configmanager.MakeHandler(cfgController.ReloadConfig)).Methods("POST")
+		subRouter.HandleFunc("/api/config/restart", configmanager.MakeHandler(cfgController.Restart)).Methods("POST")
+	}
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {

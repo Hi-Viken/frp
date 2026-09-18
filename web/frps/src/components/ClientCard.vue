@@ -24,7 +24,7 @@
       <div class="card-meta">
         <div class="meta-group">
           <span v-if="client.ip" class="meta-item">
-            <span class="meta-label">IP</span>
+            <span class="meta-label">{{ $t('card.ip') }}</span>
             <span class="meta-value">{{ client.ip }}</span>
           </span>
         </div>
@@ -39,7 +39,7 @@
 
     <div class="card-action">
       <div class="status-badge" :class="client.online ? 'online' : 'offline'">
-        {{ client.online ? 'Online' : 'Offline' }}
+        {{ client.online ? $t('common.online') : $t('common.offline') }}
       </div>
       <el-icon class="arrow-icon"><ArrowRight /></el-icon>
     </div>

@@ -31,6 +31,7 @@ import (
 	"github.com/fatedier/frp/server/http/model"
 	"github.com/fatedier/frp/server/proxy"
 	"github.com/fatedier/frp/server/registry"
+	"github.com/fatedier/frp/server/session"
 )
 
 type Controller struct {
@@ -38,6 +39,7 @@ type Controller struct {
 	serverCfg      *v1.ServerConfig
 	clientRegistry *registry.ClientRegistry
 	pxyManager     ProxyManager
+	sessionMgr     *session.Manager
 }
 
 type ProxyManager interface {
@@ -48,11 +50,13 @@ func NewController(
 	serverCfg *v1.ServerConfig,
 	clientRegistry *registry.ClientRegistry,
 	pxyManager ProxyManager,
+	sessionMgr *session.Manager,
 ) *Controller {
 	return &Controller{
 		serverCfg:      serverCfg,
 		clientRegistry: clientRegistry,
 		pxyManager:     pxyManager,
+		sessionMgr:     sessionMgr,
 	}
 }
 

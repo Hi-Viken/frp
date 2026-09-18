@@ -33,6 +33,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(url, { ...defaultOptions, ...options })
 
+  if (response.status === 401) {
+    window.location.hash = '#/login'
+    throw new HTTPError(401, 'Unauthorized')
+  }
+
   if (!response.ok) {
     throw new HTTPError(
       response.status,

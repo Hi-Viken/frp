@@ -3,36 +3,36 @@
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="24" :sm="12" :lg="6">
         <StatCard
-          label="Clients"
+          :label="$t('nav.clients')"
           :value="data.status.clientCounts"
           type="clients"
-          subtitle="Connected clients"
+          :subtitle="$t('overview.connectedClients')"
           to="/clients"
         />
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <StatCard
-          label="Proxies"
+          :label="$t('nav.proxies')"
           :value="proxyCounts"
           type="proxies"
-          subtitle="Active proxies"
+          :subtitle="$t('overview.activeProxies')"
           to="/proxies/tcp"
         />
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <StatCard
-          label="Connections"
+          :label="$t('clientDetail.connections')"
           :value="data.status.curConns"
           type="connections"
-          subtitle="Current connections"
+          :subtitle="$t('overview.currentConnections')"
         />
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <StatCard
-          label="Traffic"
+          :label="$t('proxyDetail.traffic')"
           :value="formatTrafficTotal()"
           type="traffic"
-          subtitle="Total today"
+          :subtitle="$t('overview.totalToday')"
         />
       </el-col>
     </el-row>
@@ -42,8 +42,8 @@
         <el-card class="chart-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Network Traffic</span>
-              <el-tag size="small" type="info">Today</el-tag>
+              <span class="card-title">{{ $t('overview.networkTraffic') }}</span>
+              <el-tag size="small" type="info">{{ $t('overview.today') }}</el-tag>
             </div>
           </template>
           <div class="traffic-summary">
@@ -52,7 +52,7 @@
                 <el-icon><Download /></el-icon>
               </div>
               <div class="traffic-info">
-                <div class="label">Inbound</div>
+                <div class="label">{{ $t('overview.inbound') }}</div>
                 <div class="value">
                   {{ formatFileSize(data.status.totalTrafficIn) }}
                 </div>
@@ -64,7 +64,7 @@
                 <el-icon><Upload /></el-icon>
               </div>
               <div class="traffic-info">
-                <div class="label">Outbound</div>
+                <div class="label">{{ $t('overview.outbound') }}</div>
                 <div class="value">
                   {{ formatFileSize(data.status.totalTrafficOut) }}
                 </div>
@@ -77,8 +77,8 @@
         <el-card class="chart-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Proxy Types</span>
-              <el-tag size="small" type="info">Now</el-tag>
+              <span class="card-title">{{ $t('overview.proxyTypes') }}</span>
+              <el-tag size="small" type="info">{{ $t('overview.now') }}</el-tag>
             </div>
           </template>
           <div class="proxy-types-grid">
@@ -92,7 +92,7 @@
               <div class="proxy-type-count">{{ count }}</div>
             </div>
             <div v-if="!hasActiveProxies" class="no-data">
-              No active proxies
+              {{ $t('overview.noActiveProxies') }}
             </div>
           </div>
         </el-card>
@@ -102,57 +102,57 @@
     <el-card class="config-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <span class="card-title">Server Configuration</span>
+          <span class="card-title">{{ $t('overview.serverConfiguration') }}</span>
           <el-tag size="small" type="success">v{{ data.version }}</el-tag>
         </div>
       </template>
       <div class="config-grid">
         <div class="config-item">
-          <span class="config-label">Bind Port</span>
+          <span class="config-label">{{ $t('config.bindPort') }}</span>
           <span class="config-value">{{ data.config.bindPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.kcpBindPort != 0">
-          <span class="config-label">KCP Port</span>
+          <span class="config-label">{{ $t('config.kcpPort') }}</span>
           <span class="config-value">{{ data.config.kcpBindPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.quicBindPort != 0">
-          <span class="config-label">QUIC Port</span>
+          <span class="config-label">{{ $t('config.quicPort') }}</span>
           <span class="config-value">{{ data.config.quicBindPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.vhostHTTPPort != 0">
-          <span class="config-label">HTTP Port</span>
+          <span class="config-label">{{ $t('config.httpPort') }}</span>
           <span class="config-value">{{ data.config.vhostHTTPPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.vhostHTTPSPort != 0">
-          <span class="config-label">HTTPS Port</span>
+          <span class="config-label">{{ $t('config.httpsPort') }}</span>
           <span class="config-value">{{ data.config.vhostHTTPSPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.tcpmuxHTTPConnectPort != 0">
-          <span class="config-label">TCPMux Port</span>
+          <span class="config-label">{{ $t('config.tcpmuxPort') }}</span>
           <span class="config-value">{{ data.config.tcpmuxHTTPConnectPort }}</span>
         </div>
         <div class="config-item" v-if="data.config.subdomainHost != ''">
-          <span class="config-label">Subdomain Host</span>
+          <span class="config-label">{{ $t('config.subdomainHost') }}</span>
           <span class="config-value">{{ data.config.subdomainHost }}</span>
         </div>
         <div class="config-item">
-          <span class="config-label">Max Pool Count</span>
+          <span class="config-label">{{ $t('config.maxPoolCount') }}</span>
           <span class="config-value">{{ data.config.maxPoolCount }}</span>
         </div>
         <div class="config-item">
-          <span class="config-label">Max Ports/Client</span>
+          <span class="config-label">{{ $t('config.maxPortsPerClient') }}</span>
           <span class="config-value">{{ maxPortsPerClientLabel }}</span>
         </div>
         <div class="config-item" v-if="data.config.allowPortsStr != ''">
-          <span class="config-label">Allow Ports</span>
+          <span class="config-label">{{ $t('config.allowPorts') }}</span>
           <span class="config-value">{{ data.config.allowPortsStr }}</span>
         </div>
         <div class="config-item" v-if="data.config.tlsForce">
-          <span class="config-label">TLS Force</span>
-          <el-tag size="small" type="warning">Enabled</el-tag>
+          <span class="config-label">{{ $t('config.tlsForce') }}</span>
+          <el-tag size="small" type="warning">{{ $t('common.enabled') }}</el-tag>
         </div>
         <div class="config-item">
-          <span class="config-label">Heartbeat Timeout</span>
+          <span class="config-label">{{ $t('config.heartbeatTimeout') }}</span>
           <span class="config-value">{{ data.config.heartbeatTimeout }}s</span>
         </div>
       </div>
@@ -162,12 +162,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { formatFileSize } from '../utils/format'
 import { Download, Upload } from '@element-plus/icons-vue'
 import StatCard from '../components/StatCard.vue'
 import { getServerInfo } from '../api/server'
 import type { ServerInfo } from '../types/server'
+
+const { t } = useI18n()
 
 const data = ref<ServerInfo>({
   version: '',
@@ -207,7 +210,7 @@ const proxyCounts = computed(() => {
 
 const maxPortsPerClientLabel = computed(() => {
   const value = data.value.config.maxPortsPerClient
-  return value === 0 ? 'no limit' : String(value)
+  return value === 0 ? t('common.noLimit') : String(value)
 })
 
 const formatTrafficTotal = () => {
@@ -223,7 +226,7 @@ const fetchData = async () => {
   } catch {
     ElMessage({
       showClose: true,
-      message: 'Get server info from frps failed!',
+      message: t('overview.fetchError'),
       type: 'error',
     })
   }

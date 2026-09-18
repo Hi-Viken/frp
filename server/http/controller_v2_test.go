@@ -137,7 +137,7 @@ func TestAPIV2SystemInfoEnvelope(t *testing.T) {
 				Force: true,
 			},
 		},
-	}, registry.NewClientRegistry(), serverproxy.NewManager())
+	}, registry.NewClientRegistry(), serverproxy.NewManager(), nil)
 	router := newV2TestRouter(controller)
 
 	resp := performRequest(router, "/api/v2/system/info")
@@ -226,7 +226,7 @@ func TestAPIV2SystemPruneOfflineProxies(t *testing.T) {
 		mem.StatsCollector = oldStatsCollector
 	})
 
-	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager())
+	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager(), nil)
 	router := newV2TestRouter(controller)
 
 	resp := performRequestWithMethod(router, http.MethodPost, "/api/v2/system/prune?type=offline_proxies")
@@ -380,7 +380,7 @@ func TestAPIV2ClientDetailEncodedKey(t *testing.T) {
 
 	clientRegistry := registry.NewClientRegistry()
 	clientRegistry.Register("url", "client/a?b#c", "run-url", "url-host", "1.0.0", "127.0.0.4", "v2")
-	controller := NewController(&v1.ServerConfig{}, clientRegistry, serverproxy.NewManager())
+	controller := NewController(&v1.ServerConfig{}, clientRegistry, serverproxy.NewManager(), nil)
 	router := newV2TestRouter(controller)
 
 	encodedKey := url.PathEscape("url.client/a?b#c")
@@ -488,7 +488,7 @@ func TestAPIV2ProxyTrafficEnvelopeSchemaAndHistory(t *testing.T) {
 		mem.StatsCollector = oldStatsCollector
 	})
 
-	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager())
+	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager(), nil)
 	router := newV2TestRouter(controller)
 
 	resp := performRequest(router, "/api/v2/proxies/ssh/traffic")
@@ -561,7 +561,7 @@ func TestAPIV2ProxyDetailAndTrafficEncodedName(t *testing.T) {
 		mem.StatsCollector = oldStatsCollector
 	})
 
-	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager())
+	controller := NewController(&v1.ServerConfig{}, registry.NewClientRegistry(), serverproxy.NewManager(), nil)
 	router := newV2TestRouter(controller)
 	encodedName := url.PathEscape(name)
 
@@ -831,7 +831,7 @@ func newV2TestController(t *testing.T) *Controller {
 	clientRegistry.Register("bob", "client-b", "run-b", "bob-host", "1.0.0", "127.0.0.3", "v1")
 	clientRegistry.MarkOfflineByRunID("run-b")
 
-	return NewController(&v1.ServerConfig{}, clientRegistry, serverproxy.NewManager())
+	return NewController(&v1.ServerConfig{}, clientRegistry, serverproxy.NewManager(), nil)
 }
 
 func newV2TestRouter(controller *Controller) *mux.Router {

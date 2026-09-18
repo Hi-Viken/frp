@@ -1,0 +1,180 @@
+# ============================================================
+# frps.toml - frp 服务端测试示例配置
+# 版本：v0.71.0（含 Web 页面登录改造）
+# 使用：frps -c frps.toml
+# 说明：此文件可直接用于本地/测试环境，生产环境请按需裁剪
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. 基础网络绑定
+# ------------------------------------------------------------
+
+# frp 主监听端口，frpc 将通过此端口连接服务端
+bindPort = 7000
+
+# 监听地址，默认 0.0.0.0（所有网卡）
+# IPv6 需加方括号，例如 "[::1]"
+bindAddr = "0.0.0.0"
+
+# frpc 建立连接的超时（秒），默认 10
+# userConnTimeout = 10
+
+# ------------------------------------------------------------
+# 2. 传输层（可选协议与优化）
+# ------------------------------------------------------------
+
+# KCP 协议监听端口（UDP），可与 bindPort 相同，不设置则禁用
+# kcpBindPort = 7000
+
+# QUIC 协议监听端口（UDP），不设置则禁用
+# quicBindPort = 7002
+
+# 连接池大小上限，每个代理保持的空闲连接数不超过此值
+transport.maxPoolCount = 5
+
+# TCP 多路复用，默认 true，建议保持开启
+# transport.tcpMux = true
+
+# 心跳超时（秒），默认 90；设为负数禁用心跳
+# transport.heartbeatTimeout = 90
+
+# TLS 强制加密连接（frpc ↔ frps 之间）
+# 生产环境建议设为 true
+transport.tls.force = false
+# transport.tls.certFile = "server.crt"
+# transport.tls.keyFile = "server.key"
+# transport.tls.trustedCaFile = "ca.crt"
+
+# ------------------------------------------------------------
+# 3. HTTP/HTTPS 虚拟主机（按需开启）
+# ------------------------------------------------------------
+
+# 开启后，frpc 可以使用 type = "http"/"https" 代理
+# 若不设置或设为 0，则禁用对应协议
+vhostHTTPPort = 8080
+vhostHTTPSPort = 8443
+
+# 虚拟主机响应超时（秒），默认 60
+# vhostHTTPTimeout = 60
+
+# TCP 多路复用 HTTP CONNECT，0 表示禁用
+# tcpmuxHTTPConnectPort = 1337
+
+# ------------------------------------------------------------
+# 4. 控制台（Web Dashboard）—— 含新的 Web 页面登录
+# ------------------------------------------------------------
+
+# 监听地址与端口
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+
+# 登录用户名/密码
+# ★ 两者都为空时不鉴权，任何人都可访问（仅适合本地调试）
+# ★ 设置后将启用 Web 页面登录，不再弹出浏览器 Basic Auth 弹窗
+# ★ 登录成功后浏览器会保存 httpOnly cookie（默认 24h，勾选记住我则 30 天）
+webServer.user = "admin"
+webServer.password = "frp@2026"
+
+# HTTPS（可选，生产环境建议开启）
+# webServer.tls.certFile = "server.crt"
+# webServer.tls.keyFile = "server.key"
+
+# 是否启用 pprof 调试接口（仅开发使用）
+webServer.pprofEnable = false
+
+# 启用 Prometheus 指标采集，访问 http://<addr>:<port>/metrics
+enablePrometheus = true
+
+# ------------------------------------------------------------
+# 5. 日志
+# ------------------------------------------------------------
+
+# 输出到文件：log.to = "./frps.log"
+# 输出到控制台（默认）：不设置 log.to 或留空
+log.to = "./frps.log"
+
+# 日志级别：trace / debug / info / warn / error
+log.level = "info"
+
+# 日志保留天数
+log.maxDays = 7
+
+# 控制台输出禁用颜色（Windows 下有用）
+log.disablePrintColor = false
+
+# ------------------------------------------------------------
+# 6. 客户端认证（frpc → frps）
+# ------------------------------------------------------------
+
+# 认证方式：token（默认）或 oidc
+auth.method = "token"
+
+# 共享密钥，frpc 配置里必须一致
+auth.token = "your-strong-shared-token-change-me"
+
+# 额外校验范围（可选）：HeartBeats、NewWorkConns
+# auth.additionalScopes = ["HeartBeats", "NewWorkConns"]
+
+# ------------------------------------------------------------
+# 7. 端口限制与安全
+# ------------------------------------------------------------
+
+# 限制客户端可绑定的端口范围，留空则不限制
+allowPorts = [
+  { start = 6000, end = 6100 },
+  { single = 7100 },
+  { start = 8000, end = 9000 },
+  { start = 20000, end = 30000 }
+]
+
+# 单客户端最大端口数，0 表示不限制
+maxPortsPerClient = 10
+
+# 子域名后缀，配合 frpc 的 subdomain 使用
+# 例如 subDomainHost = "frps.example.com"，frpc subdomain = "test"
+# 则访问 test.frps.example.com 即可路由到对应代理
+# subDomainHost = "frps.example.com"
+
+# 自定义 404 页面路径
+# custom404Page = "/path/to/404.html"
+
+# ------------------------------------------------------------
+# 8. NAT 打洞 / UDP / 其它
+# ------------------------------------------------------------
+
+# UDP 包大小（字节），默认 1500；frpc 端需一致
+udpPacketSize = 1500
+
+# NAT 打洞策略数据保留时间（小时）
+natholeAnalysisDataReserveHours = 168
+
+# 错误信息是否详细回传 frpc（调试用），默认 true
+# detailedErrorsToClient = true
+
+# ------------------------------------------------------------
+# 9. HTTP 插件（高级，可选）
+# ------------------------------------------------------------
+
+# 服务端插件示例：登录事件拦截
+# [[httpPlugins]]
+# name = "user-manager"
+# addr = "127.0.0.1:9000"
+# path = "/handler"
+# ops = ["Login"]
+
+# 服务端插件示例：新建代理审批
+# [[httpPlugins]]
+# name = "port-manager"
+# addr = "127.0.0.1:9001"
+# path = "/handler"
+# ops = ["NewProxy"]
+
+# ------------------------------------------------------------
+# 10. SSH 隧道网关（高级，可选）
+# ------------------------------------------------------------
+
+# 启用后，可通过 SSH 命令直接建立隧道而无需 frpc
+# sshTunnelGateway.bindPort = 2200
+# sshTunnelGateway.privateKeyFile = "/home/frp-user/.ssh/id_rsa"
+# sshTunnelGateway.autoGenPrivateKeyPath = ""
+# sshTunnelGateway.authorizedKeysFile = "/home/frp-user/.ssh/authorized_keys"

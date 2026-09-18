@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -117,11 +118,41 @@ func runServer(cfg *v1.ServerConfig) (err error) {
 		log.Infof("frps uses command line arguments for config")
 	}
 
-	svr, err := server.NewService(cfg)
-	if err != nil {
-		return err
+	firstRun := true
+	currentCfg := cfg
+	for {
+		svr, err := server.NewService(currentCfg, cfgFile)
+		if err != nil {
+			if firstRun {
+				return err
+			}
+			log.Errorf("failed to restart frps: %v, retrying in 2 seconds...", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		firstRun = false
+		log.Infof("frps started successfully")
+		svr.Run(context.Background())
+
+		if !svr.IsRestartRequested() {
+			return nil
+		}
+
+		log.Infof("restart requested, reloading configuration...")
+		if cfgFile != "" {
+			newCfg, _, reloadErr := config.LoadServerConfig(cfgFile, strictConfigMode)
+			if reloadErr != nil {
+				log.Errorf("failed to reload config: %v, restarting with old config", reloadErr)
+			} else {
+				validator := validation.NewConfigValidator(security.NewUnsafeFeatures(allowUnsafe))
+				_, checkErr := validator.ValidateServerConfig(newCfg)
+				if checkErr != nil {
+					log.Errorf("new config is invalid: %v, restarting with old config", checkErr)
+				} else {
+					currentCfg = newCfg
+					log.Infof("configuration reloaded from %s", cfgFile)
+				}
+			}
+		}
 	}
-	log.Infof("frps started successfully")
-	svr.Run(context.Background())
-	return
 }

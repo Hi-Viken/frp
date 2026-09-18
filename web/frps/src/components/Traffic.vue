@@ -16,7 +16,7 @@
         <div v-for="(item, index) in chartData" :key="index" class="day-column">
           <div class="bars-group">
             <el-tooltip
-              :content="`In: ${formatFileSize(item.in)}`"
+              :content="`${$t('traffic.inbound')}${formatFileSize(item.in)}`"
               placement="top"
             >
               <div
@@ -25,7 +25,7 @@
               ></div>
             </el-tooltip>
             <el-tooltip
-              :content="`Out: ${formatFileSize(item.out)}`"
+              :content="`${$t('traffic.outbound')}${formatFileSize(item.out)}`"
               placement="top"
             >
               <div
@@ -41,17 +41,20 @@
 
     <!-- Legend -->
     <div v-if="!loading && chartData.length > 0" class="legend">
-      <div class="legend-item"><span class="dot in"></span> Traffic In</div>
-      <div class="legend-item"><span class="dot out"></span> Traffic Out</div>
+      <div class="legend-item"><span class="dot in"></span> {{ $t('traffic.trafficIn') }}</div>
+      <div class="legend-item"><span class="dot out"></span> {{ $t('traffic.trafficOut') }}</div>
     </div>
 
-    <el-empty v-else-if="!loading" description="No traffic data" />
+    <el-empty v-else-if="!loading" :description="$t('traffic.noData')" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
+
+const { t } = useI18n()
 import { formatFileSize } from '../utils/format'
 import { getProxyTraffic } from '../api/proxy'
 import type { TrafficResponse } from '../types/proxy'
@@ -102,7 +105,7 @@ const fetchData = () => {
     .catch((err) => {
       ElMessage({
         showClose: true,
-        message: 'Get traffic info failed! ' + err,
+        message: t('traffic.fetchError') + err,
         type: 'warning',
       })
     })

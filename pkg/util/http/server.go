@@ -43,6 +43,16 @@ type Server struct {
 	hs     *http.Server
 
 	authMiddleware mux.MiddlewareFunc
+
+	cfgUser     string
+	cfgPassword string
+}
+
+func (s *Server) SetSessionValidate(fn func(string) bool) {
+	s.authMiddleware = netpkg.NewHTTPAuthMiddleware(s.cfgUser, s.cfgPassword).
+		SetAuthFailDelay(200 * time.Millisecond).
+		SetTokenValidator(fn).
+		Middleware
 }
 
 func NewServer(cfg v1.WebServerConfig) (*Server, error) {
@@ -66,10 +76,12 @@ func NewServer(cfg v1.WebServerConfig) (*Server, error) {
 		WriteTimeout: defaultWriteTimeout,
 	}
 	s := &Server{
-		addr:   addr,
-		ln:     ln,
-		hs:     hs,
-		router: router,
+		addr:        addr,
+		ln:          ln,
+		hs:          hs,
+		router:      router,
+		cfgUser:     cfg.User,
+		cfgPassword: cfg.Password,
 	}
 	if cfg.PprofEnable {
 		s.registerPprofHandlers()

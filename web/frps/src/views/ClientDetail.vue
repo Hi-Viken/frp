@@ -5,7 +5,7 @@
       <a class="breadcrumb-link" @click="goBack">
         <el-icon><ArrowLeft /></el-icon>
       </a>
-      <router-link to="/clients" class="breadcrumb-item">Clients</router-link>
+      <router-link to="/clients" class="breadcrumb-item">{{ $t('nav.clients') }}</router-link>
       <span class="breadcrumb-separator">/</span>
       <span class="breadcrumb-current">{{
         client?.displayName || route.params.key
@@ -46,7 +46,7 @@
                 class="status-badge"
                 :class="client.online ? 'online' : 'offline'"
               >
-                {{ client.online ? 'Online' : 'Offline' }}
+                {{ client.online ? $t('common.online') : $t('common.offline') }}
               </span>
             </div>
           </div>
@@ -54,24 +54,24 @@
           <!-- Info Section -->
           <div class="info-section">
             <div class="info-item">
-              <span class="info-label">Connections</span>
+              <span class="info-label">{{ $t('clientDetail.connections') }}</span>
               <span class="info-value">{{ client.status.curConns }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Run ID</span>
+              <span class="info-label">{{ $t('clientDetail.runId') }}</span>
               <span class="info-value">{{ client.runID }}</span>
             </div>
             <div v-if="client.wireProtocol" class="info-item">
-              <span class="info-label">Protocol</span>
+              <span class="info-label">{{ $t('clientDetail.protocol') }}</span>
               <span class="info-value">{{ client.wireProtocol }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">First Connected</span>
+              <span class="info-label">{{ $t('clientDetail.firstConnected') }}</span>
               <span class="info-value">{{ client.firstConnectedAgo }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">{{
-                client.online ? 'Connected' : 'Disconnected'
+                client.online ? $t('clientDetail.connected') : $t('clientDetail.disconnected')
               }}</span>
               <span class="info-value">{{
                 client.online ? client.lastConnectedAgo : client.disconnectedAgo
@@ -84,12 +84,12 @@
         <div class="proxies-card">
           <div class="proxies-header">
             <div class="proxies-title">
-              <h2>Proxies</h2>
+              <h2>{{ $t('clientDetail.proxies') }}</h2>
               <span class="proxies-count">{{ total }}</span>
             </div>
             <el-input
               v-model="proxySearch"
-              placeholder="Search proxies..."
+              :placeholder="$t('clientDetail.searchProxies')"
               :prefix-icon="Search"
               clearable
               class="proxy-search"
@@ -98,7 +98,7 @@
           <div class="proxies-body">
             <div v-if="proxiesLoading" class="loading-state">
               <el-icon class="is-loading"><Loading /></el-icon>
-              <span>Loading...</span>
+              <span>{{ $t('common.loading') }}</span>
             </div>
             <div v-else-if="proxies.length > 0" class="proxies-list">
               <ProxyCard
@@ -109,10 +109,10 @@
               />
             </div>
             <div v-else-if="proxySearch.trim()" class="empty-state">
-              <p>No proxies match "{{ proxySearch }}"</p>
+              <p>{{ $t('clientDetail.noProxiesMatch', { search: proxySearch }) }}</p>
             </div>
             <div v-else class="empty-state">
-              <p>No proxies found</p>
+              <p>{{ $t('clientDetail.noProxies') }}</p>
             </div>
           </div>
           <div v-if="total > 0" class="pagination-section">
@@ -130,10 +130,10 @@
       </template>
 
       <div v-else-if="!loading" class="not-found">
-        <h2>Client not found</h2>
-        <p>The client doesn't exist or has been removed.</p>
+        <h2>{{ $t('clientDetail.notFound') }}</h2>
+        <p>{{ $t('clientDetail.notFoundDesc') }}</p>
         <router-link to="/clients">
-          <el-button type="primary">Back to Clients</el-button>
+          <el-button type="primary">{{ $t('clientDetail.backToClients') }}</el-button>
         </router-link>
       </div>
     </div>
@@ -142,6 +142,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElPagination } from 'element-plus'
 import { ArrowLeft, Loading, Search } from '@element-plus/icons-vue'
@@ -165,6 +166,7 @@ import type { ServerInfo } from '../types/server'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const client = ref<Client | null>(null)
 const loading = ref(true)
 
@@ -207,7 +209,7 @@ const fetchClient = async (): Promise<boolean> => {
     client.value = new Client(data)
     return true
   } catch (error: any) {
-    ElMessage.error('Failed to fetch client: ' + error.message)
+    ElMessage.error(t('clientDetail.fetchError') + error.message)
     return false
   } finally {
     loading.value = false
@@ -306,7 +308,7 @@ const fetchProxies = async () => {
     pageSize.value = data.pageSize
   } catch (error: any) {
     if (seq !== requestSeq) return
-    ElMessage.error('Failed to fetch proxies: ' + error.message)
+    ElMessage.error(t('clientDetail.fetchProxiesError') + error.message)
   } finally {
     if (seq === requestSeq) {
       proxiesLoading.value = false

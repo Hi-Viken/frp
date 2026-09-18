@@ -1,0 +1,17 @@
+[Unit]
+Description=frp Client Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/frpc -c /etc/frp/frpc.toml
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=3
+LimitNOFILE=1048576
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

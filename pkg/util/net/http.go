@@ -25,9 +25,10 @@ import (
 )
 
 type HTTPAuthMiddleware struct {
-	user          string
-	passwd        string
-	authFailDelay time.Duration
+	user           string
+	passwd         string
+	authFailDelay  time.Duration
+	tokenValidator func(string) bool
 }
 
 func NewHTTPAuthMiddleware(user, passwd string) *HTTPAuthMiddleware {
@@ -42,20 +43,51 @@ func (authMid *HTTPAuthMiddleware) SetAuthFailDelay(delay time.Duration) *HTTPAu
 	return authMid
 }
 
+func (authMid *HTTPAuthMiddleware) SetTokenValidator(fn func(string) bool) *HTTPAuthMiddleware {
+	authMid.tokenValidator = fn
+	return authMid
+}
+
 func (authMid *HTTPAuthMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqUser, reqPasswd, hasAuth := r.BasicAuth()
-		if (authMid.user == "" && authMid.passwd == "") ||
-			(hasAuth && util.ConstantTimeEqString(reqUser, authMid.user) &&
-				util.ConstantTimeEqString(reqPasswd, authMid.passwd)) {
+		if authMid.user == "" && authMid.passwd == "" {
 			next.ServeHTTP(w, r)
-		} else {
-			if authMid.authFailDelay > 0 {
-				time.Sleep(authMid.authFailDelay)
-			}
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
 		}
+
+		if authMid.tokenValidator != nil {
+			token := ""
+			if cookie, err := r.Cookie("frp-auth-token"); err == nil {
+				token = cookie.Value
+			}
+			if token == "" {
+				authHeader := r.Header.Get("Authorization")
+				if strings.HasPrefix(authHeader, "Bearer ") {
+					token = strings.TrimPrefix(authHeader, "Bearer ")
+				}
+			}
+			if token != "" && authMid.tokenValidator(token) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		reqUser, reqPasswd, hasAuth := r.BasicAuth()
+		if hasAuth && util.ConstantTimeEqString(reqUser, authMid.user) &&
+			util.ConstantTimeEqString(reqPasswd, authMid.passwd) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if authMid.authFailDelay > 0 {
+			time.Sleep(authMid.authFailDelay)
+		}
+		if authMid.tokenValidator != nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }
 
